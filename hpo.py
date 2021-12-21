@@ -19,11 +19,12 @@ class ImgProcess:
         print("Processing Images...")
         
         self.k = k
+        self.folds = {}
         self.train_dir = train_dir
         self.test_dir = test_dir
         self.validation_dir = validation_dir
         self.img_shape = (224, 224, 3)
-        
+
         self.count_train = sum([len(files) for r, d, files in os.walk(train_dir)])
         self.count_test = sum([len(files) for r, d, files in os.walk(test_dir)])
         self.count_val = self.count_test if validation_dir == '' else sum([len(files) for r, d, files in os.walk(validation_dir)])
@@ -102,7 +103,7 @@ class ModelParams:
 
 
 class HPO:
-    def __init__(self, data, y, popsize=10): # , i=5, F=.5, cr=.9):
+    def __init__(self, data, y, popsize=10): # , i=5.ipynb, F=.5.ipynb, cr=.9):
         """ Inputs: data is processed image object, 
         y_key - dictionary of parameters and their possible values in format: {param_name: [1,2,3]} 
         """
@@ -200,9 +201,9 @@ class HPO:
         for key in self.y_key.keys():
             self.df[key] =[self.all_models[i].params[key] for i in self.all_models.keys()]
             
-    def export_to_csv(self, directory):
-        f_name=directory+'df.csv'
-        pd.DataFrame.to_csv(f_name)
+    def export_to_csv(self, directory, fname):
+        f_name=directory+fname+'-df.csv'
+        self.df.to_csv(f_name)
         return f_name
     
     def all_model_metrics(self,all_metrics=True):
