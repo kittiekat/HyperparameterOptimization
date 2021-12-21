@@ -13,7 +13,7 @@ from keras.preprocessing.image import ImageDataGenerator
 
 
 class ImgProcess:
-    def __init__(self, train_dir, test_dir, validation_dir='', k=1):
+    def __init__(self, train_dir, test_dir, k=1):
         """ This class processes images for a MobileNet CNN architecture only """
         """ Inputs: directories for training/testing/validation data (string) """
         print("Processing Images...")
@@ -23,25 +23,18 @@ class ImgProcess:
         self.train_dir = train_dir
         self.test_dir = test_dir
         self.validation_dir = validation_dir
-        self.img_shape = (224, 224, 3)
+        self.img_shape = (224, 224, 3) 
 
         self.count_train = sum([len(files) for r, d, files in os.walk(train_dir)])
         self.count_test = sum([len(files) for r, d, files in os.walk(test_dir)])
         self.count_val = self.count_test if validation_dir == '' else sum([len(files) for r, d, files in os.walk(validation_dir)])
         
-        # Mobilenet preprocessing function scales the values to -1 to 1 range
+        # Mobilenet preprocessing function scales the values to -1 to 1 range (not needed)
         self.gen_test = ImageDataGenerator(preprocessing_function=keras.applications.mobilenet.preprocess_input)
         self.traindata = self.gen_test.flow_from_directory(directory=self.train_dir, target_size=(224, 224))
         
         self.gen_train = ImageDataGenerator(preprocessing_function=keras.applications.mobilenet.preprocess_input)
         self.testdata = self.gen_train.flow_from_directory(directory=self.test_dir, target_size=(224, 224), shuffle=False)
-        
-        if validation_dir == '':
-            self.valdata = self.testdata
-        else:
-            self.gen_val = ImageDataGenerator(preprocessing_function=keras.applications.mobilenet.preprocess_input)
-            self.valdata =self.gen_val.flow_from_directory(directory=self.validation_dir, 
-                                                             target_size=(224, 224), shuffle=False)
 
         self.classes = list(self.testdata.class_indices.keys())
         self.class_count = len(self.classes)
@@ -245,7 +238,13 @@ class HPO:
 
     def fit_model(self, my_params, img_obj, pretrain=False, weights_path='imagenet'):
         print("Fitting Model to:", my_params.name)
-
+        
+        # Define Model
+        model = keras.models.Sequential()
+        
+        # To scale values to -1 to 1 range (which is what MobileNet was trained on)
+        model.add(keras.layers.Rescaling(1./127.5, offset=-1))
+            
         if pretrain:
             # Model Pretrained with ImageNet Weights must have Depth = 1
             # Reference: https://github.com/keras-team/keras/blob/v2.7.0/keras/applications/mobilenet.py
@@ -259,13 +258,10 @@ class HPO:
                                                       alpha=my_params.params['alpha'],
                                                       depth_multiplier=my_params.params['depth_multiplier'])
 
-            # Blocks 10-13 -> 25
-            # Blocks 11-13 -> 19
-            # Blocks 12-13 -> 13
+            # Blocks 10-13 -> 25, Blocks 11-13 -> 19, Blocks 12-13 -> 13
             for layer in load_model.layers[:-my_params.params['trainable_layers']]:
                 layer.trainable = False
-
-            model = keras.models.Sequential()
+                
             model.add(load_model)
             model.add(keras.layers.GlobalAveragePooling2D(keepdims=True)) # 4D->2D, Max pooling can also be used 
             model.add(keras.layers.Dropout(my_params.params['dropout'], name='dropout'))
@@ -274,14 +270,14 @@ class HPO:
             model.add(keras.layers.Activation(activation='softmax', name='predictions'))
         
         else:
-            # Fully Trained Model
-            model = keras.applications.MobileNet(include_top=True,
+            # Fully Trained Model 
+            model.add(keras.applications.MobileNet(include_top=True,
                                                  weights=None,
                                                  input_shape=img_obj.img_shape,
                                                  classes=img_obj.class_count,
                                                  alpha=my_params.params['alpha'],
                                                  depth_multiplier=my_params.params['depth_multiplier'],
-                                                 dropout=my_params.params['dropout'])
+                                                 dropout=my_params.params['dropout']))
 
         lr = my_params.params['lr']
         epochs = my_params.params['epochs']
