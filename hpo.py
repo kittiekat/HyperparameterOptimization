@@ -7,9 +7,65 @@ import seaborn as sns
 from tensorflow import keras
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras import optimizers
-from keras.preprocessing.image import ImageDataGenerator
 
 
+class NewImgProcess:
+    def __init__(self, all_dir, test_train_split=False, train_dir='', test_dir='', k=1, img_height=224, img_width=224):
+        """ This class processes images for a MobileNet CNN architecture only """
+        """ Inputs: directories for all/training/testing data (string) """
+        print("Processing Images...")
+        self.k = k
+        self.testdata = {}
+        self.traindata = {}
+        self.img_height = img_height
+        self.img_width = img_width
+        self.img_shape = (self.img_height, self.img_width, 3) 
+        self.img_df = pd.DataFrame(columns=["img_path","label")
+                                            
+                                          
+        
+        if test_train_split== False and k==1:
+            self.count_train = sum([len(files) for r, d, files in os.walk(train_dir)])
+            self.count_test = sum([len(files) for r, d, files in os.walk(test_dir)])
+            
+            # Mobilenet preprocessing function scales the values to -1 to 1 range (not needed)
+            self.gen_test = image.ImageDataGenerator(preprocessing_function=keras.applications.mobilenet.preprocess_input)
+            self.traindata[0] = self.gen_test.flow_from_directory(directory=self.train_dir, target_size=(self.img_height, self.img_width))
+
+            self.gen_train = image.ImageDataGenerator(preprocessing_function=keras.applications.mobilenet.preprocess_input)
+            self.testdata[0] = self.gen_train.flow_from_directory(directory=self.test_dir, target_size=(self.img_height, self.img_width), shuffle=False)
+
+            self.classes = list(self.testdata.class_indices.keys())
+            self.class_count = len(self.classes)
+        else:
+            for i in range(k):
+                if test_train_split == False:
+                    self.imgs_from_directory(all_dir)
+                else:
+                    self.imgs_from_directory(train_dir) 
+                    self.imgs_from_directory(test_dir) 
+                
+                self.testdata[i] =''
+                self.traindata[i] = ''
+
+    
+    def imgs_from_directory(self, directory):
+        # for every subdirectory in DIR call img from directory and 
+        pass
+    
+    def process_image_3D(self, path):
+        """ This function processes the image from the provided file path and outputs a 3D array """
+        img = image.load_img(path, target_size=(self.img_height, self.img_width)) # PIL Image
+        img_array_3D = image.img_to_array(img) # (224, 224, 3) 3D Numpy Array
+        return img_array_3D
+    
+    def process_image_4D(self, path):
+        """ This function processes the image from the provided file path and outputs a 4D array """
+        img_array_3D = self.process_image_3D(path)
+        img_array_4D = np.expand_dims(img_array_3D, axis=0) # (1, 224, 224, 3) 4D Numpy Array
+        out = tf.keras.applications.mobilenet.preprocess_input(img_array_expanded_dims)
+        return img_array_4D
+    
 
 
 class ImgProcess:
@@ -18,22 +74,18 @@ class ImgProcess:
         """ Inputs: directories for training/testing/validation data (string) """
         print("Processing Images...")
         
-        self.k = k
-        self.folds = {}
         self.train_dir = train_dir
         self.test_dir = test_dir
-        self.validation_dir = validation_dir
         self.img_shape = (224, 224, 3) 
 
         self.count_train = sum([len(files) for r, d, files in os.walk(train_dir)])
         self.count_test = sum([len(files) for r, d, files in os.walk(test_dir)])
-        self.count_val = self.count_test if validation_dir == '' else sum([len(files) for r, d, files in os.walk(validation_dir)])
         
         # Mobilenet preprocessing function scales the values to -1 to 1 range (not needed)
-        self.gen_test = ImageDataGenerator(preprocessing_function=keras.applications.mobilenet.preprocess_input)
+        self.gen_test = image.ImageDataGenerator(preprocessing_function=keras.applications.mobilenet.preprocess_input)
         self.traindata = self.gen_test.flow_from_directory(directory=self.train_dir, target_size=(224, 224))
         
-        self.gen_train = ImageDataGenerator(preprocessing_function=keras.applications.mobilenet.preprocess_input)
+        self.gen_train = image.ImageDataGenerator(preprocessing_function=keras.applications.mobilenet.preprocess_input)
         self.testdata = self.gen_train.flow_from_directory(directory=self.test_dir, target_size=(224, 224), shuffle=False)
 
         self.classes = list(self.testdata.class_indices.keys())
@@ -78,6 +130,7 @@ class ImgProcess:
 
     def process_image(self, address):
         """ This function processes the image and outputs a format suitable for MobileNet classifier """
+
         return 999
         
 
