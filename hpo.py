@@ -91,9 +91,12 @@ class NewImgProcess:
                 ds_train = tf.data.Dataset.from_tensor_slices((train_names, train_truth))                
                 ds_test = tf.data.Dataset.from_tensor_slices((test_names, test_truth))
                 
+                # Resize, Shuffle and Batch
+                
+                
                 # Process images in dataset
-                self.testdata[i] =''
-                self.traindata[i] = ''                                   
+                self.testdata[i] = ds_train
+                self.traindata[i] = ds_test                                  
     
     def imgs_from_directory(self, directory):
         file_names = []; class_labels = []
