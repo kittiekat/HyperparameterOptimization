@@ -10,21 +10,50 @@ from tensorflow.keras import optimizers
 
 
 class NewImgProcess:
-    def __init__(self, all_dir, test_train_split=False, train_dir='', test_dir='', k=1, img_height=224, img_width=224):
-        """ This class processes images for a MobileNet CNN architecture only """
-        """ Inputs: directories for all/training/testing data (string) """
+    def __init__(self, img_dir='', test_train_split=False, train_dir='', test_dir='', k=1, split = .75, img_height=224, img_width=224):
+        """ 
+        This class processes images for CNN training
+        
+        Inputs: 
+        directories, string, for all/training/testing data
+        test_train_split, True/False, indicates whether data is split into Test/Training directories or not. Use True if providing test_dir and train_dir
+        k, integer, number of folds to use for K-Fold Validation
+        split, float, percentage of data to use for training if data is not already split up
+        img_height and img_width, integer, dimensions for resizing images
+        
+        Output:
+        k-folds of 4D arrays
+        """
+        
         print("Processing Images...")
+        
         self.k = k
+        self.split = split
         self.testdata = {}
         self.traindata = {}
         self.img_height = img_height
         self.img_width = img_width
         self.img_shape = (self.img_height, self.img_width, 3) 
-        self.img_df = pd.DataFrame(columns=["img_path","label")
-                                            
-                                          
         
-        if test_train_split== False and k==1:
+        self.tt_split = test_train_split
+        self.test_dir = test_dir
+        self.train_dir = train_dir
+        self.img_dir = img_dir
+        
+        self.count_all = 0
+        self.count_test = 0
+        self.count_train = 0 
+        self.build_folds(self.split)
+        
+        if len([i for i in [img_dir, test_dir, train_dir] if i]) == 0:
+            print("No images were processed")
+        
+                                            
+    def build_folds(self, split):
+         if test_train_split == True:
+            self.imgs_from_directory(train_dir, df) 
+            self.imgs_from_directory(test_dir, df)
+                                            
             self.count_train = sum([len(files) for r, d, files in os.walk(train_dir)])
             self.count_test = sum([len(files) for r, d, files in os.walk(test_dir)])
             
@@ -37,21 +66,52 @@ class NewImgProcess:
 
             self.classes = list(self.testdata.class_indices.keys())
             self.class_count = len(self.classes)
-        else:
-            for i in range(k):
-                if test_train_split == False:
-                    self.imgs_from_directory(all_dir)
-                else:
-                    self.imgs_from_directory(train_dir) 
-                    self.imgs_from_directory(test_dir) 
+                                              
+                                            
+        else: 
+            file_names, class_labels = self.imgs_from_directory(all_dir)
+            self.count_all = int(len(file_names)
+            self.count_train = self.count_all * split)
+            self.count_test = self.count_all - count_train
                 
-                self.testdata[i] =''
-                self.traindata[i] = ''
+            for i in range(k):
+                test_names, test_truth, train_names, train_truth = [],[],[],[]
 
+                y = rnd.sample(range(len(file_names)), count_train)
+
+                for i in range(len(file_names)):
+                    if i in y: 
+                        train_names.append(file_names[i])
+                        train_truth.append(class_labels[i])
+                    else:
+                        test_names.append(file_names[i])
+                        test_truth.append(class_labels[i])
+                              
+                # Create tf dataset       
+                ds_train = tf.data.Dataset.from_tensor_slices((train_names, train_truth))                
+                ds_test = tf.data.Dataset.from_tensor_slices((test_names, test_truth))
+                
+                # Process images in dataset
+                self.testdata[i] =''
+                self.traindata[i] = ''                                   
     
     def imgs_from_directory(self, directory):
-        # for every subdirectory in DIR call img from directory and 
-        pass
+        file_names = []; class_labels = []
+        sub_dirs = next(os.walk(directory))[1]
+        sub_dirs.sort()
+
+        for label in range(len(sub_dirs)):
+            path = directory+'/'+sub_dirs[label]
+            files = (file for file in os.listdir(path) 
+                     if os.path.isfile(os.path.join(path, file)))
+    
+            dir_file_names= [path+'/'+file for file in files]
+            dir_class_labels = [label]*len(dir_file_names)
+            
+            file_names+=dir_file_names
+            class_labels+= dir_class_labels
+       
+        return file_names, class_labels
     
     def process_image_3D(self, path):
         """ This function processes the image from the provided file path and outputs a 3D array """
