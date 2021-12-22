@@ -7,6 +7,7 @@ import seaborn as sns
 from tensorflow import keras
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras import optimizers
+from sklearn.model_selection import StratifiedKFold
 
 
 class NewImgProcess:
@@ -77,31 +78,26 @@ class NewImgProcess:
             self.count_test = self.count_all - count_train
                 
             for i in range(k):
-                test_names, test_truth, train_names, train_truth = [],[],[],[]
+               # Needs to be tested
+                skf= StratifiedKFold(n_splits=k, random_state=None, shuffle=False)
+                for train_index, test_index in skf.split(file_names, class_labels):
+                    print("TRAIN:", train_index, "TEST:", test_index)
+                    X_train, X_test = file_names[train_index], file_names[test_index]
+                    y_train, y_test = class_labels[train_index], class_labels[test_index]
+                                            
+                    # Create tf dataset       
+                    ds_train = tf.data.Dataset.from_tensor_slices((X_train, y_train))                
+                    ds_test = tf.data.Dataset.from_tensor_slices((X_test, y_test))
 
-                y = rnd.sample(range(len(file_names)), count_train) # Needs to remain balanced!!
+                    # Resize, Shuffle and Batch
 
-                for i in range(len(file_names)):
-                    if i in y: 
-                        train_names.append(file_names[i])
-                        train_truth.append(class_labels[i])
-                    else:
-                        test_names.append(file_names[i])
-                        test_truth.append(class_labels[i])
-                              
-                # Create tf dataset       
-                ds_train = tf.data.Dataset.from_tensor_slices((train_names, train_truth))                
-                ds_test = tf.data.Dataset.from_tensor_slices((test_names, test_truth))
-                
-                # Resize, Shuffle and Batch
-                
-                
-                # Process images in dataset
-                self.testdata[i] = ds_train
-                self.traindata[i] = ds_test 
-                
-                self.classes = []
-                self.class_count = len(self.classes)
+
+                    # Process images in dataset
+                    self.testdata[i] = ds_train
+                    self.traindata[i] = ds_test 
+
+                    self.classes = []
+                    self.class_count = len(self.classes)
     
     def imgs_from_directory(self, directory):
         file_names = []; class_labels = []
