@@ -43,6 +43,8 @@ class NewImgProcess:
         self.count_all = 0
         self.count_test = 0
         self.count_train = 0 
+        self.class_count = 0
+        self.classes = []
         self.build_folds(self.split)
         
         if len([i for i in [img_dir, test_dir, train_dir] if i]) == 0:
@@ -59,7 +61,7 @@ class NewImgProcess:
             
             # Mobilenet preprocessing function scales the values to -1 to 1 range (not needed)
             self.gen_test = image.ImageDataGenerator(preprocessing_function=keras.applications.mobilenet.preprocess_input)
-            self.traindata[0] = self.gen_test.flow_from_directory(directory=self.train_dir, target_size=(self.img_height, self.img_width))
+            self.traindata[0] = self.gen_test.flow_from_directory(directory=self.train_dir, target_size=(self.img_height, self.img_width), shuffle=True))
 
             self.gen_train = image.ImageDataGenerator(preprocessing_function=keras.applications.mobilenet.preprocess_input)
             self.testdata[0] = self.gen_train.flow_from_directory(directory=self.test_dir, target_size=(self.img_height, self.img_width), shuffle=False)
@@ -77,7 +79,7 @@ class NewImgProcess:
             for i in range(k):
                 test_names, test_truth, train_names, train_truth = [],[],[],[]
 
-                y = rnd.sample(range(len(file_names)), count_train)
+                y = rnd.sample(range(len(file_names)), count_train) # Needs to remain balanced!!
 
                 for i in range(len(file_names)):
                     if i in y: 
@@ -96,7 +98,10 @@ class NewImgProcess:
                 
                 # Process images in dataset
                 self.testdata[i] = ds_train
-                self.traindata[i] = ds_test                                  
+                self.traindata[i] = ds_test 
+                
+                self.classes = []
+                self.class_count = len(self.classes)
     
     def imgs_from_directory(self, directory):
         file_names = []; class_labels = []
